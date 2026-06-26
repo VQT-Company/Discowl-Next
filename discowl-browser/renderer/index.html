@@ -1,0 +1,1825 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Discowl Browser</title>
+  <style>
+:root {
+  --bg-primary: #0f1117;
+  --bg-secondary: #141520;
+  --bg-tertiary: #1a1b2e;
+  --bg-hover: #1e2030;
+  --bg-active: #252740;
+  --bg-dropdown: #1a1b2e;
+  --bg-input: #1a1b2e;
+  --bg-modal: #1a1b2e;
+  --bg-toast: #2a2b3e;
+  --text-primary: #dde1f0;
+  --text-secondary: #9ca0b0;
+  --text-muted: #6b6f80;
+  --border-color: #2a2b3e;
+  --border-subtle: #222338;
+  --accent: #5b7cf0;
+  --accent-hover: #7b9cff;
+  --danger: #e55555;
+  --danger-hover: #ff6666;
+  --success: #4ade80;
+  --warning: #fbbf24;
+  --scrollbar-thumb: #3a3b4e;
+  --scrollbar-track: #1a1b2e;
+  --shadow: 0 4px 16px rgba(0,0,0,0.4);
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --font-sans: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --font-mono: 'Cascadia Code', 'Consolas', monospace;
+  --transition-fast: 120ms ease;
+  --transition-normal: 200ms ease;
+  --menubar-height: 30px;
+  --tabbar-height: 34px;
+  --toolbar-height: 40px;
+  --sidebar-width: 280px;
+  --statusbar-height: 24px;
+}
+
+[data-theme="light"] {
+  --bg-primary: #f5f5f7;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #ebebef;
+  --bg-hover: #e5e5ea;
+  --bg-active: #d9d9df;
+  --bg-dropdown: #ffffff;
+  --bg-input: #ffffff;
+  --bg-modal: #ffffff;
+  --bg-toast: #2a2b3e;
+  --text-primary: #1c1c1e;
+  --text-secondary: #636366;
+  --text-muted: #aeaeb2;
+  --border-color: #d1d1d6;
+  --border-subtle: #e5e5ea;
+  --accent: #2563eb;
+  --accent-hover: #3b82f6;
+  --danger: #dc2626;
+  --danger-hover: #ef4444;
+  --success: #16a34a;
+  --warning: #d97706;
+  --scrollbar-thumb: #c1c1c6;
+  --scrollbar-track: #ebebef;
+  --shadow: 0 4px 16px rgba(0,0,0,0.12);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+
+input, button, textarea, select {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+  border: none;
+  outline: none;
+  background: none;
+}
+
+button { cursor: pointer; }
+button:disabled { opacity: 0.4; pointer-events: none; }
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+img { -webkit-user-drag: none; }
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: var(--scrollbar-track); }
+::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+.hidden { display: none !important; }
+
+#app {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+/* -- Resize handles -- */
+.rz {
+  position: fixed;
+  z-index: 9999;
+}
+.rz-n { top: 0; left: 4px; right: 4px; height: 4px; cursor: n-resize; }
+.rz-s { bottom: 0; left: 4px; right: 4px; height: 4px; cursor: s-resize; }
+.rz-e { right: 0; top: 4px; bottom: 4px; width: 4px; cursor: e-resize; }
+.rz-w { left: 0; top: 4px; bottom: 4px; width: 4px; cursor: w-resize; }
+.rz-ne { top: 0; right: 0; width: 8px; height: 8px; cursor: ne-resize; }
+.rz-nw { top: 0; left: 0; width: 8px; height: 8px; cursor: nw-resize; }
+.rz-se { bottom: 0; right: 0; width: 8px; height: 8px; cursor: se-resize; }
+.rz-sw { bottom: 0; left: 0; width: 8px; height: 8px; cursor: sw-resize; }
+
+/* ---- Fake titlebar ---- */
+.fake-titlebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 32px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  padding: 0 8px;
+  -webkit-app-region: drag;
+  flex-shrink: 0;
+}
+.fake-titlebar-drag {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  -webkit-app-region: drag;
+}
+.fake-titlebar-drag span {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.fake-titlebar-controls {
+  display: flex;
+  gap: 6px;
+  -webkit-app-region: no-drag;
+}
+
+/* ---- Window controls ---- */
+.window-controls {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  -webkit-app-region: no-drag;
+}
+.wc-btn {
+  width: 28px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+.wc-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+.wc-btn.wc-close:hover { background: var(--danger); color: #fff; }
+
+/* ---- Menubar ---- */
+#menubar {
+  display: flex;
+  align-items: center;
+  height: var(--menubar-height);
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  padding: 0 4px;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 100;
+}
+.mb-item { position: relative; }
+.mb-btn {
+  padding: 3px 10px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  border-radius: var(--radius-sm);
+  transition: background var(--transition-fast), color var(--transition-fast);
+  white-space: nowrap;
+}
+.mb-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+.mb-btn:active { background: var(--bg-active); }
+.mb-item.open > .mb-btn { background: var(--bg-active); color: var(--text-primary); }
+
+.mb-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  min-width: 220px;
+  background: var(--bg-dropdown);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow);
+  padding: 4px 0;
+  z-index: 200;
+}
+.mb-entry {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  font-size: 12px;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+.mb-entry:hover { background: var(--bg-hover); }
+.mb-entry:active { background: var(--bg-active); }
+.mb-entry.danger { color: var(--danger); }
+.mb-entry.danger:hover { background: rgba(229,85,85,0.15); }
+.mb-icon {
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+.mb-shortcut {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+.mb-separator {
+  height: 1px;
+  background: var(--border-color);
+  margin: 4px 8px;
+}
+.menubar-drag {
+  flex: 1;
+  height: 100%;
+  -webkit-app-region: drag;
+}
+
+/* ---- Tab bar ---- */
+#tab-bar {
+  display: flex;
+  align-items: center;
+  height: var(--tabbar-height);
+  background: var(--bg-tertiary);
+  border-bottom: 1px solid var(--border-color);
+  padding: 0 4px;
+  flex-shrink: 0;
+  gap: 4px;
+}
+#tabs-scroll {
+  flex: 1;
+  overflow-x: auto;
+  overflow-y: hidden;
+  display: flex;
+  align-items: stretch;
+  height: 100%;
+}
+#tabs-scroll::-webkit-scrollbar { display: none; }
+#tabs-container {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  height: 100%;
+  padding: 3px 0;
+}
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  min-width: 80px;
+  max-width: 240px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-bottom: none;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+  position: relative;
+}
+.tab:hover { background: var(--bg-hover); color: var(--text-primary); }
+.tab.active {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  border-color: var(--border-color);
+}
+.tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--bg-primary);
+}
+.tab-title {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tab-favicon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  object-fit: contain;
+}
+.tab-close {
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  opacity: 0;
+  transition: opacity var(--transition-fast), background var(--transition-fast);
+  flex-shrink: 0;
+}
+.tab:hover .tab-close { opacity: 0.7; }
+.tab-close:hover { opacity: 1 !important; background: var(--bg-active); }
+.tab.private { font-style: italic; }
+
+.tab-action-btn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  transition: background var(--transition-fast), color var(--transition-fast);
+  flex-shrink: 0;
+}
+.tab-action-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+.tab-action-btn.private-btn { color: #a78bfa; }
+.tab-action-btn.private-btn:hover { background: rgba(167,139,250,0.15); }
+
+/* ---- Toolbar ---- */
+#toolbar {
+  display: flex;
+  align-items: center;
+  height: var(--toolbar-height);
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  padding: 0 8px;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.nav-buttons {
+  display: flex;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.nav-btn {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+.nav-btn:hover:not(:disabled) { background: var(--bg-hover); color: var(--text-primary); }
+.nav-btn:active:not(:disabled) { background: var(--bg-active); }
+
+#url-bar-wrapper {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  height: 30px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 0 8px;
+  gap: 4px;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  min-width: 0;
+}
+#url-bar-wrapper:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(91,124,240,0.25);
+}
+
+.security-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+.security-icon.secure { color: var(--success); }
+
+#url-bar {
+  flex: 1;
+  height: 100%;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  font-size: 13px;
+  min-width: 0;
+}
+#url-bar::placeholder { color: var(--text-muted); }
+
+.url-action-btn {
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  transition: color var(--transition-fast), background var(--transition-fast);
+  flex-shrink: 0;
+}
+.url-action-btn:hover { color: var(--text-secondary); background: var(--bg-hover); }
+.url-action-btn.active { color: var(--warning); }
+
+.zoom-indicator {
+  width: auto;
+  padding: 0 6px;
+  font-size: 12px;
+  font-family: var(--font-mono);
+}
+
+#engine-selector-wrapper { position: relative; flex-shrink: 0; }
+.engine-btn {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  transition: background var(--transition-fast);
+}
+.engine-btn:hover { background: var(--bg-hover); }
+.engine-btn img { border-radius: 2px; }
+
+#engine-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  min-width: 170px;
+  background: var(--bg-dropdown);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow);
+  padding: 4px 0;
+  z-index: 200;
+}
+.engine-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+.engine-option:hover { background: var(--bg-hover); }
+.engine-option.active { background: var(--bg-active); color: var(--accent); }
+.engine-logo {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.toolbar-actions {
+  display: flex;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.action-btn {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  position: relative;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+.action-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+.action-btn:active { background: var(--bg-active); }
+.action-btn[aria-expanded="true"] { background: var(--bg-active); color: var(--accent); }
+
+.toolbar-zoom {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.zoom-ctrl-btn {
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  transition: background var(--transition-fast);
+}
+.zoom-ctrl-btn:hover { background: var(--bg-hover); }
+.zoom-ctrl-pct {
+  padding: 0 6px;
+  font-size: 12px;
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+  height: 26px;
+  display: flex;
+  align-items: center;
+  border-radius: var(--radius-sm);
+  transition: background var(--transition-fast);
+}
+.zoom-ctrl-pct:hover { background: var(--bg-hover); }
+
+.dl-badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  min-width: 14px;
+  height: 14px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 14px;
+  text-align: center;
+  border-radius: 7px;
+  padding: 0 4px;
+}
+.dl-panel {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  width: 320px;
+  max-height: 360px;
+  background: var(--bg-dropdown);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  margin-top: 4px;
+}
+.dl-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-color);
+}
+.dl-panel-title { font-size: 13px; font-weight: 600; }
+.dl-header-btn {
+  font-size: 11px;
+  color: var(--text-secondary);
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  transition: background var(--transition-fast);
+}
+.dl-header-btn:hover { background: var(--bg-hover); }
+.dl-empty {
+  padding: 24px 12px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.dl-list { flex: 1; overflow-y: auto; }
+
+/* ---- History menus (back/forward dropdown) ---- */
+.nav-history-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  min-width: 200px;
+  max-height: 300px;
+  overflow-y: auto;
+  background: var(--bg-dropdown);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow);
+  z-index: 200;
+  padding: 4px 0;
+}
+
+/* ---- Bookmarks toolbar ---- */
+#bookmarks-toolbar {
+  display: flex;
+  align-items: center;
+  height: 28px;
+  background: var(--bg-tertiary);
+  border-bottom: 1px solid var(--border-color);
+  padding: 0 8px;
+  gap: 4px;
+  flex-shrink: 0;
+  overflow-x: auto;
+}
+#bookmarks-toolbar::-webkit-scrollbar { display: none; }
+
+/* ---- Content area ---- */
+#content-area {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  position: relative;
+  min-height: 0;
+}
+
+/* ---- Sidebars ---- */
+.sidebar {
+  width: var(--sidebar-width);
+  background: var(--bg-secondary);
+  border-right: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: width var(--transition-normal), min-width var(--transition-normal);
+  flex-shrink: 0;
+}
+.sidebar.closed { width: 0; min-width: 0; border-right: none; }
+.sidebar-right {
+  border-right: none;
+  border-left: 1px solid var(--border-color);
+}
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
+}
+.sidebar-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.sidebar-header-actions {
+  display: flex;
+  gap: 4px;
+}
+.bm-view-btn {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+.bm-view-btn:hover { background: var(--bg-hover); color: var(--text-secondary); }
+.bm-view-btn.active { color: var(--accent); background: rgba(91,124,240,0.12); }
+
+.sidebar-close-btn {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+.sidebar-close-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+
+.sidebar-search-bar {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-color);
+}
+.sidebar-search-bar input {
+  width: 100%;
+  height: 30px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 0 10px;
+  font-size: 12px;
+  color: var(--text-primary);
+  transition: border-color var(--transition-fast);
+}
+.sidebar-search-bar input:focus { border-color: var(--accent); }
+.sidebar-search-bar input::placeholder { color: var(--text-muted); }
+
+.sidebar-actions {
+  display: flex;
+  gap: 6px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-color);
+}
+.sidebar-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  border-radius: var(--radius-sm);
+  transition: background var(--transition-fast);
+}
+.sidebar-action-btn:hover { background: var(--bg-hover); }
+.sidebar-action-btn.danger-btn { color: var(--danger); }
+.sidebar-action-btn.danger-btn:hover { background: rgba(229,85,85,0.12); }
+
+.bm-smart-section { padding: 10px 12px; border-bottom: 1px solid var(--border-color); }
+.bm-smart-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+.bm-smart-views { display: flex; gap: 4px; flex-wrap: wrap; }
+.bm-smart-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  border-radius: var(--radius-sm);
+  transition: background var(--transition-fast);
+}
+.bm-smart-btn:hover { background: var(--bg-hover); }
+.bm-smart-btn.active { background: var(--bg-active); color: var(--accent); }
+
+.bm-tags-section { padding: 10px 12px; border-bottom: 1px solid var(--border-color); }
+.bm-tags-list { display: flex; gap: 4px; flex-wrap: wrap; }
+
+.bm-tree {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+.bm-tree .bm-folder {
+  font-weight: 500;
+}
+.bm-tree .bm-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+  border-left: 2px solid transparent;
+}
+.bm-tree .bm-item:hover { background: var(--bg-hover); }
+.bm-tree .bm-item.selected { background: var(--bg-active); border-left-color: var(--accent); }
+.bm-tree .bm-item-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+}
+.bm-tree .bm-item-title {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---- Webview container ---- */
+#webview-container {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background: var(--bg-primary);
+}
+
+/* ---- New tab page ---- */
+.newtab-page {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-primary);
+}
+.newtab-inner {
+  text-align: center;
+  max-width: 520px;
+  width: 90%;
+}
+.newtab-brand { margin-bottom: 24px; }
+.newtab-logo {
+  width: 80px;
+  height: 80px;
+  object-fit: contain;
+  margin-bottom: 12px;
+  opacity: 0.9;
+}
+.newtab-title {
+  font-size: 28px;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+.newtab-form {
+  display: flex;
+  gap: 8px;
+}
+.newtab-form input {
+  flex: 1;
+  height: 42px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 0 16px;
+  font-size: 14px;
+  color: var(--text-primary);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+.newtab-form input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(91,124,240,0.25);
+}
+.newtab-form input::placeholder { color: var(--text-muted); }
+.newtab-form button {
+  height: 42px;
+  padding: 0 20px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: var(--radius-lg);
+  transition: background var(--transition-fast);
+}
+.newtab-form button:hover { background: var(--accent-hover); }
+
+.ntp-bg-btn {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  font-size: 11px;
+  color: var(--text-muted);
+  border-radius: var(--radius-md);
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+.ntp-bg-btn:hover { background: var(--bg-hover); color: var(--text-secondary); }
+
+/* ---- Status bar ---- */
+#status-bar {
+  height: var(--statusbar-height);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border-color);
+  padding: 0 10px;
+  flex-shrink: 0;
+}
+#status-text {
+  font-size: 11px;
+  color: var(--text-muted);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#tor-indicator {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: #a78bfa;
+}
+
+/* ---- Sandwich menu ---- */
+#sandwich-menu {
+  position: absolute;
+  top: calc(var(--menubar-height) + var(--tabbar-height) + var(--toolbar-height) + 28px);
+  right: 8px;
+  width: 240px;
+  background: var(--bg-dropdown);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  padding: 4px 0;
+  z-index: 300;
+  transition: opacity var(--transition-normal), transform var(--transition-normal);
+  transform-origin: top right;
+}
+#sandwich-menu:not(.hidden) { opacity: 1; transform: scale(1); }
+#sandwich-menu.hidden {
+  opacity: 0;
+  transform: scale(0.95);
+  pointer-events: none;
+}
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+  color: var(--text-primary);
+}
+.menu-item:hover { background: var(--bg-hover); }
+.menu-item:active { background: var(--bg-active); }
+.menu-item .shortcut {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+.menu-item.danger-item { color: var(--danger); }
+.menu-item.danger-item:hover { background: rgba(229,85,85,0.12); }
+.menu-separator {
+  height: 1px;
+  background: var(--border-color);
+  margin: 4px 8px;
+}
+
+/* ---- Settings panel ---- */
+.full-panel {
+  position: absolute;
+  inset: 0;
+  background: var(--bg-primary);
+  z-index: 500;
+  display: flex;
+  flex-direction: column;
+}
+.full-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 48px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
+}
+.full-panel-header h2 {
+  font-size: 16px;
+  font-weight: 600;
+}
+.panel-close-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  transition: background var(--transition-fast);
+}
+.panel-close-btn:hover { background: var(--bg-hover); }
+
+.settings-layout {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+.settings-nav {
+  width: 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px;
+  border-right: 1px solid var(--border-color);
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+.settings-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  border-radius: var(--radius-md);
+  text-align: left;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+.settings-nav-item:hover { background: var(--bg-hover); color: var(--text-primary); }
+.settings-nav-item.active { background: var(--bg-active); color: var(--accent); }
+
+.settings-content {
+  flex: 1;
+  padding: 24px;
+  overflow-y: auto;
+}
+.settings-section { display: none; }
+.settings-section.active { display: block; }
+
+/* ---- Bookmark modal ---- */
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.modal-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+}
+.modal-box {
+  position: relative;
+  width: 420px;
+  max-width: 90vw;
+  background: var(--bg-modal);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border-color);
+}
+.modal-header h3 { font-size: 15px; font-weight: 600; }
+.modal-close {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  transition: background var(--transition-fast);
+}
+.modal-close:hover { background: var(--bg-hover); color: var(--text-primary); }
+
+.modal-body {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.form-label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+.form-label input[type="checkbox"] {
+  margin-right: 6px;
+  accent-color: var(--accent);
+}
+.form-input {
+  width: 100%;
+  height: 36px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 0 12px;
+  font-size: 13px;
+  color: var(--text-primary);
+  transition: border-color var(--transition-fast);
+}
+.form-input:focus { border-color: var(--accent); }
+.form-input::placeholder { color: var(--text-muted); }
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--border-color);
+}
+.btn {
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: var(--radius-md);
+  transition: background var(--transition-fast), opacity var(--transition-fast);
+}
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+}
+.btn-primary:hover { background: var(--accent-hover); }
+.btn-secondary {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+.btn-secondary:hover { background: var(--bg-active); }
+
+/* ---- Toast ---- */
+#toast-container {
+  position: fixed;
+  bottom: 40px;
+  right: 16px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.toast {
+  padding: 10px 16px;
+  background: var(--bg-toast);
+  color: #fff;
+  font-size: 13px;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow);
+  animation: toast-in 250ms ease forwards;
+  max-width: 360px;
+}
+.toast.removing { animation: toast-out 200ms ease forwards; }
+@keyframes toast-in {
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes toast-out {
+  from { opacity: 1; transform: translateX(0); }
+  to { opacity: 0; transform: translateX(20px); }
+}
+
+/* ---- Click-outside overlay ---- */
+#click-outside-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 150;
+}
+
+/* ---- Focus visible ---- */
+:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+  </style>
+</head>
+<body>
+
+<div id="app">
+
+  <div class="rz rz-n"  data-edge="n"></div>
+  <div class="rz rz-s"  data-edge="s"></div>
+  <div class="rz rz-e"  data-edge="e"></div>
+  <div class="rz rz-w"  data-edge="w"></div>
+  <div class="rz rz-ne" data-edge="ne"></div>
+  <div class="rz rz-nw" data-edge="nw"></div>
+  <div class="rz rz-se" data-edge="se"></div>
+  <div class="rz rz-sw" data-edge="sw"></div>
+
+  <div id="fake-titlebar" class="fake-titlebar hidden">
+    <div class="fake-titlebar-drag">
+      <img src="../assets/logo-discowl.png" style="width:16px;height:16px;object-fit:contain;opacity:.8" draggable="false"/>
+      <span id="fake-titlebar-title">Discowl Browser</span>
+    </div>
+    <div class="fake-titlebar-controls">
+      <button class="wc-btn" id="ft-minimize" title="Minimize">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 6h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      </button>
+      <button class="wc-btn" id="ft-maximize" title="Maximize">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" id="ft-max-icon">
+          <rect x="2" y="2" width="8" height="8" rx="1" stroke="currentColor" stroke-width="1.4" fill="none"/>
+        </svg>
+      </button>
+      <button class="wc-btn wc-close" id="ft-close" title="Close">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div id="menubar" role="menubar">
+    <div class="mb-item" data-menu="file">
+      <button class="mb-btn" data-i18n="menu.file">File</button>
+      <div class="mb-dropdown hidden">
+        <div class="mb-entry" data-action="new-tab">
+          <span class="mb-icon"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1v11M1 6.5h11" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span>
+          <span data-i18n="menu.new_tab">New Tab</span><span class="mb-shortcut">Ctrl+T</span>
+        </div>
+        <div class="mb-entry" data-action="new-private">
+          <span class="mb-icon"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="6.5" cy="4.5" r="2.5" stroke="currentColor" stroke-width="1.4"/><path d="M1.5 12c0-2.76 2.24-5 5-5s5 2.24 5 5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><line x1="11" y1="1" x2="2" y2="12" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></span>
+          <span data-i18n="menu.new_private_tab">New Private Tab</span><span class="mb-shortcut">Ctrl+Shift+T</span>
+        </div>
+        <div class="mb-entry" data-action="new-window">
+          <span class="mb-icon"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><rect x="1" y="3" width="11" height="9" rx="1.5" stroke="currentColor" stroke-width="1.4"/><path d="M1 5h11" stroke="currentColor" stroke-width="1.3"/></svg></span>
+          <span data-i18n="menu.new_window">New Window</span><span class="mb-shortcut">Ctrl+Shift+N</span>
+        </div>
+        <div class="mb-separator"></div>
+        <div class="mb-entry" data-action="open-file">
+          <span class="mb-icon"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 2h4l1.5 2H11a1 1 0 011 1v6a1 1 0 01-1 1H2a1 1 0 01-1-1V3a1 1 0 011-1z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg></span>
+          <span data-i18n="menu.open_file">Open File...</span><span class="mb-shortcut">Ctrl+O</span>
+        </div>
+        <div class="mb-separator"></div>
+        <div class="mb-entry" data-action="open-url">
+          <span class="mb-icon"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 6.5h9M7 2.5l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          <span data-i18n="menu.open_address">Open Address</span><span class="mb-shortcut">Ctrl+L</span>
+        </div>
+        <div class="mb-entry" data-action="save-page">
+          <span class="mb-icon"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 10h9M6.5 2v6M4 6l2.5 2.5L9 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          <span data-i18n="menu.save_page">Save Page</span><span class="mb-shortcut">Ctrl+S</span>
+        </div>
+        <div class="mb-separator"></div>
+        <div class="mb-entry" data-action="print">
+          <span class="mb-icon"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><rect x="2" y="4" width="9" height="6" rx="1" stroke="currentColor" stroke-width="1.4"/><path d="M4 4V2h5v2M4 8h5M4 10h3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></span>
+          <span data-i18n="menu.print">Print</span><span class="mb-shortcut">Ctrl+P</span>
+        </div>
+        <div class="mb-separator"></div>
+        <div class="mb-entry danger" data-action="quit">
+          <span class="mb-icon"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M8 6.5H2M5 4l-3 2.5L5 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M7 2h3a1 1 0 011 1v7a1 1 0 01-1 1H7" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></span>
+          <span data-i18n="sandwich.quit">Quit</span><span class="mb-shortcut">Alt+F4</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="mb-item" data-menu="edit">
+      <button class="mb-btn" data-i18n="menu.edit">Edit</button>
+      <div class="mb-dropdown hidden">
+        <div class="mb-entry" data-action="find">
+          <span class="mb-icon"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="5.5" cy="5.5" r="3.5" stroke="currentColor" stroke-width="1.4"/><path d="M8.5 8.5l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span>
+          <span data-i18n="menu.find">Find in Page</span><span class="mb-shortcut">Ctrl+F</span>
+        </div>
+        <div class="mb-separator"></div>
+        <div class="mb-entry" data-action="cut">
+          <span class="mb-icon"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="3" cy="10" r="1.5" stroke="currentColor" stroke-width="1.3"/><circle cx="10" cy="10" r="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M6.5 6.5L3 10M6.5 6.5L10 10M6.5 2v4.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></span>
+          <span data-i18n="menu.cut">Cut</span><span class="mb-shortcut">Ctrl+X</span>
+        </div>
+        <div class="mb-entry" data-action="copy">
+          <span class="mb-icon"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><rect x="4" y="4" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.4"/><path d="M2 9V2h7" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          <span data-i18n="menu.copy">Copy</span><span class="mb-shortcut">Ctrl+C</span>
+        </div>
+        <div class="mb-entry" data-action="paste">
+          <span class="mb-icon"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><rect x="2" y="4" width="9" height="7" rx="1" stroke="currentColor" stroke-width="1.4"/><path d="M4 4V3a1 1 0 011-1h3a1 1 0 011 1v1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></span>
+          <span data-i18n="menu.paste">Paste</span><span class="mb-shortcut">Ctrl+V</span>
+        </div>
+        <div class="mb-separator"></div>
+        <div class="mb-entry" data-action="select-all">
+          <span class="mb-icon"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><rect x="1.5" y="1.5" width="10" height="10" rx="1" stroke="currentColor" stroke-width="1.4" stroke-dasharray="2 1.5"/></svg></span>
+          <span data-i18n="menu.select_all">Select All</span><span class="mb-shortcut">Ctrl+A</span>
+        </div>
+        <div class="mb-separator"></div>
+        <div class="mb-entry" data-action="settings">
+          <span class="mb-icon"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="6.5" cy="6.5" r="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M6.5 1v1.5M6.5 10.5V12M1 6.5h1.5M10.5 6.5H12M2.6 2.6l1 1M9.4 9.4l1 1M9.4 3.6l-1 1M3.6 9.4l-1 1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></span>
+          <span data-i18n="menu.settings">Settings</span><span class="mb-shortcut">Ctrl+,</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="mb-item" data-menu="view">
+      <button class="mb-btn" data-i18n="menu.view">View</button>
+      <div class="mb-dropdown hidden">
+        <div class="mb-entry" data-action="zoom-in">
+          <span class="mb-icon"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="5.5" cy="5.5" r="3.5" stroke="currentColor" stroke-width="1.4"/><path d="M4 5.5h3M5.5 4v3M8.5 8.5l3 3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></span>
+          <span data-i18n="menu.zoom_in">Zoom In</span><span class="mb-shortcut">Ctrl++</span>
+        </div>
+        <div class="mb-entry" data-action="zoom-out">
+          <span class="mb-icon"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="5.5" cy="5.5" r="3.5" stroke="currentColor" stroke-width="1.4"/><path d="M4 5.5h3M8.5 8.5l3 3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></span>
+          <span data-i18n="menu.zoom_out">Zoom Out</span><span class="mb-shortcut">Ctrl+-</span>
+        </div>
+        <div class="mb-entry" data-action="zoom-reset">
+          <span class="mb-icon"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="6.5" cy="6.5" r="4" stroke="currentColor" stroke-width="1.4"/><path d="M5 6.5h3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></span>
+          <span data-i18n="menu.zoom_reset">Reset Zoom</span><span class="mb-shortcut">Ctrl+0</span>
+        </div>
+        <div class="mb-separator"></div>
+        <div class="mb-entry" data-action="fullscreen">
+          <span class="mb-icon"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M1.5 5V2h3M8.5 2h3v3M1.5 8v3h3M8.5 11h3V8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          <span data-i18n="menu.fullscreen">Fullscreen</span><span class="mb-shortcut">F11</span>
+        </div>
+        <div class="mb-separator"></div>
+        <div class="mb-entry" data-action="customize-toolbar">
+          <span data-i18n="menu.customize_toolbar">Customize toolbar...</span>
+        </div>
+        <div class="mb-separator"></div>
+        <div class="mb-entry" data-action="toggle-bookmarks-bar">
+          <span class="mb-icon"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 3h9M2 6.5h9M2 10h5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></span>
+          <span data-i18n="menu.bookmarks_bar">Bookmarks Bar</span>
+        </div>
+        <div class="mb-entry" data-action="devtools">
+          <span class="mb-icon"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M4 4.5L1.5 6.5 4 8.5M9 4.5l2.5 2-2.5 2M7 3l-2 7" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          <span data-i18n="menu.devtools">Developer Tools</span><span class="mb-shortcut">F12</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="mb-item" data-menu="history">
+      <button class="mb-btn" data-i18n="menu.history">History</button>
+      <div class="mb-dropdown hidden">
+        <div class="mb-entry" data-action="back">
+          <span class="mb-icon"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M11 6.5H2M2 6.5L6 3M2 6.5L6 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          <span data-i18n="menu.back">Back</span><span class="mb-shortcut">Alt+Left</span>
+        </div>
+        <div class="mb-entry" data-action="forward">
+          <span class="mb-icon"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 6.5h9M11 6.5L7 3M11 6.5L7 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          <span data-i18n="menu.forward">Forward</span><span class="mb-shortcut">Alt+Right</span>
+        </div>
+        <div class="mb-separator"></div>
+        <div class="mb-entry" data-action="show-history">
+          <span class="mb-icon"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" stroke-width="1.4"/><path d="M6.5 4v2.5l2 1.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          <span data-i18n="menu.all_history">All History</span><span class="mb-shortcut">Ctrl+H</span>
+        </div>
+        <div class="mb-separator"></div>
+        <div class="mb-entry danger" data-action="clear-history">
+          <span class="mb-icon"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 3h9M4 3V2h5v1M5 6v4M8 6v4M3 3l.7 8h6.6L11 3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          <span data-i18n="menu.clear_history">Clear History</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="mb-item" data-menu="bookmarks">
+      <button class="mb-btn" data-i18n="menu.bookmarks">Bookmarks</button>
+      <div class="mb-dropdown hidden">
+        <div class="mb-entry" data-action="bookmark-page">
+          <span class="mb-icon"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1l1.4 2.8 3.1.45-2.25 2.2.53 3.1L6.5 8.1 3.72 9.55l.53-3.1L2 4.25l3.1-.45L6.5 1z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg></span>
+          <span data-i18n="menu.bookmark_page">Bookmark This Page</span><span class="mb-shortcut">Ctrl+D</span>
+        </div>
+        <div class="mb-entry" data-action="show-bookmarks">
+          <span class="mb-icon"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M3 1h7a1 1 0 011 1v10l-4.5-2.5L1 12V2a1 1 0 011-1z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg></span>
+          <span data-i18n="menu.all_bookmarks">All Bookmarks</span><span class="mb-shortcut">Ctrl+B</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="mb-item" data-menu="help">
+      <button class="mb-btn" data-i18n="menu.help">Help</button>
+      <div class="mb-dropdown hidden">
+        <div class="mb-entry" data-action="about">
+          <span class="mb-icon"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="6.5" cy="6.5" r="5" stroke="currentColor" stroke-width="1.4"/><path d="M6.5 6v3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="6.5" cy="4" r="0.7" fill="currentColor"/></svg></span>
+          <span data-i18n="menu.about">About Discowl</span>
+        </div>
+        <div class="mb-entry" data-action="github">
+          <span class="mb-icon"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1a5.5 5.5 0 00-1.74 10.72c.27.05.37-.12.37-.26v-.93C3.58 10.88 3.26 9.8 3.26 9.8c-.26-.65-.63-.82-.63-.82-.51-.35.04-.34.04-.34.57.04.87.58.87.58.5.86 1.32.61 1.64.47.05-.36.2-.61.36-.75-1.24-.14-2.55-.62-2.55-2.76 0-.61.22-1.11.58-1.5-.06-.14-.25-.71.05-1.48 0 0 .47-.15 1.55.58a5.4 5.4 0 012.82 0c1.08-.73 1.55-.58 1.55-.58.3.77.11 1.34.05 1.48.36.39.58.89.58 1.5 0 2.15-1.31 2.62-2.56 2.76.2.17.38.52.38 1.04v1.55c0 .14.1.31.37.26A5.5 5.5 0 006.5 1z" stroke="currentColor" stroke-width="0.5" fill="currentColor"/></svg></span>
+          <span data-i18n="menu.github">GitHub Repository</span>
+        </div>
+        <div class="mb-separator"></div>
+      </div>
+    </div>
+
+    <div id="menubar-drag" class="menubar-drag"></div>
+    <div id="window-controls" class="window-controls hidden">
+      <button id="wc-minimize" class="wc-btn" title="Minimize">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 6h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      </button>
+      <button id="wc-maximize" class="wc-btn" title="Maximize">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" id="wc-max-icon">
+          <rect x="2" y="2" width="8" height="8" rx="1" stroke="currentColor" stroke-width="1.4" fill="none"/>
+        </svg>
+      </button>
+      <button id="wc-close" class="wc-btn wc-close" title="Close">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+
+  </div>
+
+  <div id="tab-bar" role="tablist">
+    <div id="tabs-scroll">
+      <div id="tabs-container">
+        <button id="new-tab-btn" class="tab-action-btn" title="New tab (Ctrl+T)" data-i18n-title="nav.new_tab">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+    </div>
+    <button id="new-private-btn" class="tab-action-btn private-btn" title="New private tab (Ctrl+Shift+T)" data-i18n-title="nav.new_private_tab">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="5" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M2 13c0-2.76 2.24-5 5-5s5 2.24 5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="12" y1="1" x2="2" y2="13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+    </button>
+  </div>
+
+  <div id="toolbar" role="toolbar" aria-label="Navigation toolbar">
+
+    <div class="nav-buttons">
+      <button id="back-btn"    class="nav-btn" title="Back (Alt+Left)" data-i18n-title="nav.back" disabled>
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M14 9H5M5 9L9 5M5 9l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <button id="forward-btn" class="nav-btn" title="Forward (Alt+Right)" data-i18n-title="nav.forward" disabled>
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M4 9h9M13 9l-4-4M13 9l-4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <button id="reload-btn"  class="nav-btn" title="Reload (F5)" data-i18n-title="nav.reload">
+        <svg id="reload-icon" width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M13.5 4.5A6 6 0 1014.8 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M11 2l3 2.5-2.5 3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <button id="home-btn"    class="nav-btn" title="Home" data-i18n-title="nav.home">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M2.5 8.5L9 3l6.5 5.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M4.5 8v6.5h9V8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M7 14.5v-4h4v4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+
+    <div id="url-bar-wrapper">
+      <span id="security-icon" class="security-icon" title="Connection security">
+        <svg id="lock-icon" width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="2" y="6" width="10" height="7" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M4.5 6V4.5a2.5 2.5 0 015 0V6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      </span>
+      <input id="url-bar" type="text"
+             autocomplete="off" spellcheck="false"
+             aria-label="Address bar"
+             placeholder="Search or enter address..." data-i18n-placeholder="nav.address_bar" />
+      <button id="zoom-indicator" class="url-action-btn zoom-indicator hidden" title="Reset zoom (Ctrl+0)" data-i18n-title="nav.zoom_reset">100%</button>
+      <button id="bookmark-star-btn" class="url-action-btn" title="Bookmark this page" data-i18n-title="nav.bookmark_page">
+        <svg id="star-icon" width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1l1.85 3.75 4.15.6-3 2.9.7 4.1L8 10.25 4.3 12.35l.7-4.1L2 5.35l4.15-.6L8 1z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+
+    <div id="engine-selector-wrapper">
+      <button id="engine-selector-btn" class="engine-btn" title="Change search engine" data-i18n-title="nav.change_engine">
+        <span id="engine-icon" style="display:flex;align-items:center"><img src="https://duckduckgo.com/favicon.png" width="16" height="16" style="display:block;object-fit:contain" /></span>
+      </button>
+      <div id="engine-dropdown" class="dropdown hidden" role="listbox">
+        <div class="engine-option" data-engine="duckduckgo" role="option">
+          <span class="engine-logo"><img src="https://duckduckgo.com/favicon.png" width="16" height="16" style="display:block;object-fit:contain" /></span><span>DuckDuckGo</span>
+        </div>
+        <div class="engine-option" data-engine="google" role="option">
+          <span class="engine-logo"><img src="https://www.google.com/images/branding/googleg/1x/googleg_standard_color_128dp.png" width="16" height="16" style="display:block;object-fit:contain" /></span><span>Google</span>
+        </div>
+        <div class="engine-option" data-engine="bing" role="option">
+          <span class="engine-logo"><img src="https://www.bing.com/sa/simg/favicon-2x.ico" width="16" height="16" style="display:block;object-fit:contain" /></span><span>Bing</span>
+        </div>
+        <div class="engine-option" data-engine="brave" role="option">
+          <span class="engine-logo"><img src="https://www.google.com/s2/favicons?sz=64&domain=search.brave.com" width="16" height="16" style="display:block;object-fit:contain" /></span><span>Brave Search</span>
+        </div>
+        <div class="engine-option" data-engine="ecosia" role="option">
+          <span class="engine-logo"><img src="https://www.google.com/s2/favicons?sz=64&domain=www.ecosia.org" width="16" height="16" style="display:block;object-fit:contain" /></span><span>Ecosia</span>
+        </div>
+        <div class="engine-option" data-engine="qwant" role="option">
+          <span class="engine-logo"><img src="https://www.google.com/s2/favicons?sz=64&domain=www.qwant.com" width="16" height="16" style="display:block;object-fit:contain" /></span><span>Qwant</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="toolbar-actions">
+      <button id="sidebar-left-toggle" class="action-btn" title="Bookmarks (Ctrl+B)" data-i18n-title="nav.bookmarks">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M3 4h12M3 9h12M3 14h7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      </button>
+      <button id="sidebar-right-toggle" class="action-btn" title="History (Ctrl+H)" data-i18n-title="nav.history">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M9 5v4l3 2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <div style="position:relative">
+        <button id="downloads-btn" class="action-btn" title="Downloads (Ctrl+J)" data-i18n-title="nav.downloads" aria-expanded="false">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 2v9M5 8l4 4 4-4M2 15h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span id="downloads-badge" class="dl-badge hidden">0</span>
+        </button>
+        <div id="downloads-panel" class="dl-panel hidden">
+          <div class="dl-panel-header">
+            <span class="dl-panel-title" data-i18n="dl.title">Downloads</span>
+            <div style="display:flex;gap:6px">
+              <button id="downloads-clear-all" class="dl-header-btn" title="Clear completed" data-i18n="dl.clear">Clear</button>
+              <button id="downloads-see-all"   class="dl-header-btn" title="See all downloads" data-i18n="dl.see_all">See all</button>
+            </div>
+          </div>
+          <div class="dl-empty" data-i18n="dl.no_downloads">No downloads yet</div>
+          <div class="dl-list"></div>
+        </div>
+      </div>
+      <div id="toolbar-zoom" class="toolbar-zoom hidden">
+        <button id="toolbar-zoom-out" class="zoom-ctrl-btn" title="Zoom out (Ctrl+-)" data-i18n-title="nav.zoom_out">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 7h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+        <button id="toolbar-zoom-pct" class="zoom-ctrl-pct" title="Reset zoom (Ctrl+0)">100%</button>
+        <button id="toolbar-zoom-in"  class="zoom-ctrl-btn" title="Zoom in (Ctrl+=)" data-i18n-title="nav.zoom_in">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 2v10M2 7h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+
+      <button id="sandwich-btn" class="action-btn" title="Menu" data-i18n-title="nav.menu" aria-expanded="false" aria-haspopup="true">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="4"  r="1.4" fill="currentColor"/><circle cx="9" cy="9"  r="1.4" fill="currentColor"/><circle cx="9" cy="14" r="1.4" fill="currentColor"/></svg>
+      </button>
+    </div>
+
+  </div>
+
+  <div id="back-history-menu"    class="nav-history-menu hidden"></div>
+  <div id="forward-history-menu" class="nav-history-menu hidden"></div>
+
+  <div id="bookmarks-toolbar" role="toolbar" aria-label="Bookmarks bar">
+    <div id="bookmarks-toolbar-items">
+    </div>
+  </div>
+
+  <div id="content-area">
+
+    <aside id="left-sidebar" class="sidebar sidebar-left closed" aria-label="Bookmarks" role="complementary">
+      <div class="sidebar-header">
+        <span class="sidebar-title">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 2h10v13l-5-3-5 13V2z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+          <span data-i18n="sidebar.bookmarks">Bookmarks</span>
+        </span>
+        <div class="sidebar-header-actions">
+          <button class="bm-view-btn active" data-bm-view="list" title="List view" data-i18n-title="bm.view_list">
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M1 3h11M1 6.5h11M1 10h11" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+          </button>
+          <button class="bm-view-btn" data-bm-view="compact" title="Compact view" data-i18n-title="bm.view_compact">
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M1 2.5h11M1 5h11M1 7.5h11M1 10h11" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+          </button>
+          <button class="bm-view-btn" data-bm-view="grid" title="Grid view" data-i18n-title="bm.view_grid">
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><rect x="1" y="1" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.3"/><rect x="7" y="1" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.3"/><rect x="1" y="7" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.3"/><rect x="7" y="7" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.3"/></svg>
+          </button>
+        </div>
+        <button class="sidebar-close-btn" data-target="left-sidebar" title="Close">
+          <svg width="14" height="14" viewBox="0 0 14 14"><path d="M2 2l10 10M12 2L2 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+      <div class="sidebar-search-bar">
+        <input id="bookmarks-search" type="text" placeholder="Search bookmarks..." autocomplete="off" data-i18n-placeholder="sidebar.search"/>
+      </div>
+      <div class="sidebar-actions">
+        <button id="add-bookmark-btn" class="sidebar-action-btn" title="Add bookmark" data-i18n-title="bm.add_btn">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          <span data-i18n="bm.add_btn">Add</span>
+        </button>
+        <button id="add-folder-btn" class="sidebar-action-btn" title="New folder" data-i18n-title="bm.folder_btn">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 2.5h4l1 1h5v7H1z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
+          <span data-i18n="bm.folder_btn">Folder</span>
+        </button>
+      </div>
+      <div class="bm-smart-section">
+        <div class="bm-smart-title" data-i18n="bm.smart_views">Smart views</div>
+        <div class="bm-smart-views">
+          <button class="bm-smart-btn" data-bm-smart="all" data-i18n="bm.view_all">
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M3 2h7v9l-3.5-2L3 11V2z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
+            <span data-i18n="bm.view_all">All</span>
+          </button>
+          <button class="bm-smart-btn" data-bm-smart="recent">
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="6.5" cy="6.5" r="5" stroke="currentColor" stroke-width="1.3"/><path d="M6.5 4v3l2 1.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span data-i18n="bm.view_recent">Recent</span>
+          </button>
+          <button class="bm-smart-btn" data-bm-smart="frequent">
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M1 10l3-4 2.5 2.5L9 5l3 5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span data-i18n="bm.view_frequent">Frequent</span>
+          </button>
+          <button class="bm-smart-btn" data-bm-smart="unvisited">
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="6.5" cy="6.5" r="5" stroke="currentColor" stroke-width="1.3" stroke-dasharray="3 2"/></svg>
+            <span data-i18n="bm.view_unvisited">Unvisited</span>
+          </button>
+        </div>
+      </div>
+      <div class="bm-tags-section hidden" id="bm-tags-section">
+        <div class="bm-smart-title" data-i18n="bm.tags_section"># Tags</div>
+        <div class="bm-tags-list" id="bm-tags-list"></div>
+      </div>
+      <div id="bookmarks-tree" role="tree" aria-label="Bookmarks tree" class="bm-tree bm-view-list">
+      </div>
+    </aside>
+
+    <div id="webview-container" role="main" aria-label="Browser content">
+      <div id="new-tab-page" class="newtab-page hidden">
+        <div class="newtab-inner">
+          <div class="newtab-brand">
+            <img src="../assets/logo-discowl.png" class="newtab-logo" alt="" draggable="false"/>
+            <h1 class="newtab-title" id="newtab-title">Discowl</h1>
+          </div>
+          <form id="newtab-form" class="newtab-form">
+            <input id="newtab-search-input"
+                   type="text"
+                   data-i18n-placeholder="nav.address_bar" placeholder="Search..."
+                   autocomplete="off"
+                   autofocus />
+            <button type="submit" id="newtab-search-btn" data-i18n="nav.search_btn">Search</button>
+          </form>
+        </div>
+        <button id="ntp-bg-btn" class="ntp-bg-btn" title="Customize background" aria-label="Customize background">
+          <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+            <circle cx="7.5" cy="7.5" r="6.5" stroke="currentColor" stroke-width="1.3"/>
+            <path d="M7.5 1v2M7.5 12v2M1 7.5h2M12 7.5h2M3.05 3.05l1.41 1.41M10.54 10.54l1.41 1.41M3.05 11.95l1.41-1.41M10.54 4.46l1.41-1.41" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+            <circle cx="7.5" cy="7.5" r="2" fill="currentColor"/>
+          </svg>
+          <span data-i18n="ntp.customize">Customize</span>
+        </button>
+      </div>
+    </div>
+
+    <aside id="right-sidebar" class="sidebar sidebar-right closed" aria-label="History" role="complementary">
+      <div class="sidebar-header">
+        <span class="sidebar-title">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.6"/><path d="M8 4.5v3.75l2.5 1.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span data-i18n="sidebar.history">History</span>
+        </span>
+        <button class="sidebar-close-btn" data-target="right-sidebar" title="Close">
+          <svg width="14" height="14" viewBox="0 0 14 14"><path d="M2 2l10 10M12 2L2 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+      <div class="sidebar-search-bar">
+        <input id="history-search" type="text" placeholder="Search history..." data-i18n-placeholder="sidebar.search_history" autocomplete="off" />
+      </div>
+      <div class="sidebar-actions">
+        <button id="clear-history-btn" class="sidebar-action-btn danger-btn" title="Clear history">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 4h10M4 4V2.5A1.5 1.5 0 015.5 1h3A1.5 1.5 0 0110 2.5V4m1 0l-.8 8H3.8L3 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span data-i18n="sidebar.clear_all">Clear all</span>
+        </button>
+      </div>
+      <div id="history-list" role="list">
+      </div>
+    </aside>
+
+  </div>
+
+  <div id="status-bar">
+    <span id="status-text"></span>
+    <span id="tor-indicator" class="hidden">
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="5" stroke="#a78bfa" stroke-width="1.5"/><circle cx="6" cy="6" r="2" fill="#a78bfa"/></svg>
+      Tor
+    </span>
+  </div>
+
+</div>
+
+<div id="sandwich-menu" class="dropdown-panel hidden" role="menu" aria-label="Menu principal">
+  <div class="menu-item" id="menu-new-tab" role="menuitem">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1v14M1 8h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    <span data-i18n="sandwich.new_tab">New tab</span>
+    <span class="shortcut">Ctrl+T</span>
+  </div>
+  <div class="menu-item" id="menu-new-private" role="menuitem">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="6" r="3.5" stroke="currentColor" stroke-width="1.5"/><path d="M2 15c0-3.31 2.69-6 6-6s6 2.69 6 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="13" y1="1" x2="3" y2="15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+    <span data-i18n="tab.private">Private tab</span>
+    <span class="shortcut">Ctrl+Shift+T</span>
+  </div>
+  <div class="menu-separator"></div>
+  <div class="menu-item" id="menu-bookmarks" role="menuitem">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 2h10v13l-5-3-5 3V2z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+    <span data-i18n="sandwich.bookmarks">Bookmarks</span>
+    <span class="shortcut">Ctrl+B</span>
+  </div>
+  <div class="menu-item" id="menu-history" role="menuitem">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.5"/><path d="M8 4.5v3.75l2.5 1.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <span data-i18n="sandwich.history">History</span>
+    <span class="shortcut">Ctrl+H</span>
+  </div>
+  <div class="menu-item" id="menu-downloads" role="menuitem">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1v9M4 7l4 4 4-4M2 13h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <span data-i18n="sandwich.downloads">Downloads</span>
+    <span class="shortcut">Ctrl+J</span>
+  </div>
+  <div class="menu-separator"></div>
+  <div class="menu-item" id="menu-zoom-in" role="menuitem">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="5.5" stroke="currentColor" stroke-width="1.5"/><path d="M11.5 11.5l3 3M7 4.5v5M4.5 7h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+    <span data-i18n="menu.zoom_in">Zoom+</span>
+    <span class="shortcut">Ctrl++</span>
+  </div>
+  <div class="menu-item" id="menu-zoom-out" role="menuitem">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="5.5" stroke="currentColor" stroke-width="1.5"/><path d="M11.5 11.5l3 3M4.5 7h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+    <span data-i18n="menu.zoom_out">Zoom-</span>
+    <span class="shortcut">Ctrl+-</span>
+  </div>
+  <div class="menu-separator"></div>
+  <div class="menu-item" id="menu-passwords" role="menuitem">
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="2" y="7" width="10" height="7" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M4 7V5a3 3 0 016 0v2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+    <span data-i18n="sandwich.passwords">Passwords</span>
+  </div>
+  <div class="menu-item" id="menu-settings" role="menuitem">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="2.5" stroke="currentColor" stroke-width="1.5"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.1 3.1l1.4 1.4M11.5 11.5l1.4 1.4M3.1 12.9l1.4-1.4M11.5 4.5l1.4-1.4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+    <span data-i18n="sandwich.settings">Settings</span>
+  </div>
+  <div class="menu-separator"></div>
+  <div class="menu-item danger-item" id="menu-quit" role="menuitem">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M6 3H3a1 1 0 00-1 1v8a1 1 0 001 1h3M10 11l4-4-4-4M14 7H6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <span data-i18n="sandwich.quit">Quit</span>
+  </div>
+</div>
+
+<div id="settings-panel" class="full-panel hidden" role="dialog" aria-label="Settings" aria-modal="true">
+  <div class="full-panel-header">
+    <h2 data-i18n="settings.title">Settings</h2>
+    <button id="settings-close-btn" class="panel-close-btn" title="Close" data-i18n-title="settings.close">
+      <svg width="20" height="20" viewBox="0 0 20 20"><path d="M4 4l12 12M16 4L4 16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </button>
+  </div>
+  <div class="settings-layout">
+    <nav class="settings-nav" role="navigation">
+      <button class="settings-nav-item active" data-section="general">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="1" y="1" width="14" height="14" rx="3" stroke="currentColor" stroke-width="1.5"/></svg>
+        <span data-i18n="settings.general">General</span>
+      </button>
+      <button class="settings-nav-item" data-section="appearance">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.5"/><path d="M8 3v2M8 11v2M3 8h2M11 8h2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        <span data-i18n="settings.appearance">Appearance</span>
+      </button>
+      <button class="settings-nav-item" data-section="search">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="5.5" stroke="currentColor" stroke-width="1.5"/><path d="M11.5 11.5l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        <span data-i18n="settings.search">Search engine</span>
+      </button>
+      <button class="settings-nav-item" data-section="privacy">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1L2 4v4c0 3.5 2.5 6.5 6 7.5 3.5-1 6-4 6-7.5V4L8 1z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+        <span data-i18n="settings.privacy">Privacy</span>
+      </button>
+      <button class="settings-nav-item" data-section="network">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="3" stroke="currentColor" stroke-width="1.5"/><circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.5"/><path d="M1.5 8h13M8 1.5c-2 2-3 4-3 6.5s1 4.5 3 6.5M8 1.5c2 2 3 4 3 6.5s-1 4.5-3 6.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+        <span data-i18n="settings.network">Network</span>
+      </button>
+      <button class="settings-nav-item" data-section="tor">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="#a78bfa" stroke-width="1.5"/><circle cx="8" cy="8" r="3" fill="#a78bfa"/></svg>
+        <span data-i18n="settings.tor">Tor</span>
+      </button>
+      <button class="settings-nav-item" data-section="security">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="3" y="7" width="10" height="8" rx="1.5" stroke="currentColor" stroke-width="1.5"/><path d="M5 7V5a3 3 0 016 0v2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        <span data-i18n="settings.security">Security</span>
+      </button>
+    </nav>
+    <div class="settings-content">
+      <div id="settings-general"    class="settings-section active"></div>
+      <div id="settings-appearance" class="settings-section"></div>
+      <div id="settings-search"     class="settings-section"></div>
+      <div id="settings-privacy"    class="settings-section"></div>
+      <div id="settings-network"    class="settings-section"></div>
+      <div id="settings-tor"        class="settings-section"></div>
+      <div id="settings-security"     class="settings-section"></div>
+    </div>
+  </div>
+</div>
+
+<div id="bookmark-modal" class="modal hidden" role="dialog" aria-modal="true">
+  <div class="modal-overlay"></div>
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3 id="bookmark-modal-title" data-i18n="bm.add_modal">Add bookmark</h3>
+      <button class="modal-close" id="bookmark-modal-close">
+        <svg width="16" height="16" viewBox="0 0 16 16"><path d="M3 3l10 10M13 3L3 13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <label class="form-label">Name
+        <input id="bm-name-input" type="text" class="form-input" placeholder="Bookmark name" />
+      </label>
+      <label class="form-label">URL
+        <input id="bm-url-input" type="text" class="form-input" placeholder="https://..." />
+      </label>
+      <label class="form-label">
+        <input id="bm-toolbar-check" type="checkbox" /> Show in bookmarks bar
+      </label>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="bookmark-modal-cancel">Cancel</button>
+      <button class="btn btn-primary"   id="bookmark-modal-save">Save</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container" aria-live="polite"></div>
+<div id="click-outside-overlay" class="hidden"></div>
+
+<script>
+(function() {
+  function sendCommand(cmd) {
+    console.log('__DISCOWL__' + cmd);
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    var urlBar = document.getElementById('url-bar');
+    if (urlBar) {
+      urlBar.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+          sendCommand('NAVIGATE:' + urlBar.value);
+        }
+      });
+    }
+
+    var backBtn = document.getElementById('back-btn');
+    if (backBtn) {
+      backBtn.addEventListener('click', function() {
+        sendCommand('BACK');
+      });
+    }
+
+    var forwardBtn = document.getElementById('forward-btn');
+    if (forwardBtn) {
+      forwardBtn.addEventListener('click', function() {
+        sendCommand('FORWARD');
+      });
+    }
+
+    var reloadBtn = document.getElementById('reload-btn');
+    if (reloadBtn) {
+      reloadBtn.addEventListener('click', function() {
+        sendCommand('RELOAD');
+      });
+    }
+
+    var homeBtn = document.getElementById('home-btn');
+    if (homeBtn) {
+      homeBtn.addEventListener('click', function() {
+        sendCommand('HOME');
+      });
+    }
+
+    var newtabForm = document.getElementById('newtab-form');
+    if (newtabForm) {
+      newtabForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        var input = document.getElementById('newtab-search-input');
+        if (input && input.value.trim()) {
+          sendCommand('NAVIGATE:' + input.value);
+        }
+      });
+    }
+  });
+})();
+</script>
+
+</body>
+</html>

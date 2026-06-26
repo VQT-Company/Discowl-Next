@@ -1,0 +1,181 @@
+import { Button, LineEdit, HorizontalBox } from "std-widgets.slint";
+
+export global WebviewEvents {
+    callback webview-pointer-event(PointerEvent, length, length);
+}
+
+export component DiscowlWindow inherits Window {
+    title: "Discowl";
+    min-width: 1024px;
+    min-height: 768px;
+    background: #0f0f13;
+
+    // Callbacks to communicate with Rust
+    callback navigate(string);
+    callback go-back();
+    callback go-forward();
+    callback reload();
+
+    // Properties updated from Rust
+    in property <string> current-url: "https://google.com";
+    in property <bool> can-go-back: false;
+    in property <bool> can-go-forward: false;
+    in property <bool> is-loading: false;
+
+    // Web content rendered by Servo
+    in property <image> web-content;
+    in property <length> webview-width <=> webview-area.width;
+    in property <length> webview-height <=> webview-area.height;
+
+    VerticalLayout {
+        // ── Toolbar ──────────────────────────────────────────────
+        Rectangle {
+            height: 52px;
+            background: #1a1a24;
+
+            HorizontalLayout {
+                padding-left: 10px;
+                padding-right: 10px;
+                spacing: 6px;
+                alignment: center;
+
+                // Logo
+                Text {
+                    text: "🦉";
+                    font-size: 22px;
+                    vertical-alignment: center;
+                }
+
+                // Back button
+                Rectangle {
+                    width: 34px;
+                    height: 34px;
+                    border-radius: 8px;
+                    background: back-touch.has-hover ? #2a2a38 : transparent;
+
+                    Text {
+                        text: "←";
+                        color: root.can-go-back ? #ffffff : #555566;
+                        font-size: 18px;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                    }
+
+                    back-touch := TouchArea {
+                        clicked => { root.go-back(); }
+                    }
+                }
+
+                // Forward button
+                Rectangle {
+                    width: 34px;
+                    height: 34px;
+                    border-radius: 8px;
+                    background: fwd-touch.has-hover ? #2a2a38 : transparent;
+
+                    Text {
+                        text: "→";
+                        color: root.can-go-forward ? #ffffff : #555566;
+                        font-size: 18px;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                    }
+
+                    fwd-touch := TouchArea {
+                        clicked => { root.go-forward(); }
+                    }
+                }
+
+                // Reload button
+                Rectangle {
+                    width: 34px;
+                    height: 34px;
+                    border-radius: 8px;
+                    background: reload-touch.has-hover ? #2a2a38 : transparent;
+
+                    Text {
+                        text: root.is-loading ? "✕" : "↻";
+                        color: #aaaacc;
+                        font-size: 18px;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                    }
+
+                    reload-touch := TouchArea {
+                        clicked => { root.reload(); }
+                    }
+                }
+
+                // URL Bar
+                url-input := Rectangle {
+                    horizontal-stretch: 1;
+                    height: 36px;
+                    border-radius: 10px;
+                    background: #25253a;
+                    border-width: 1px;
+                    border-color: url-field.has-focus ? #5555ff : #33334a;
+
+                    HorizontalLayout {
+                        padding-left: 12px;
+                        padding-right: 12px;
+
+                        url-field := LineEdit {
+                            text: root.current-url;
+                            font-size: 14px;
+                            placeholder-text: "Search or enter address...";
+
+                            accepted(text) => {
+                                root.navigate(text);
+                            }
+                        }
+                    }
+                }
+
+                // Go button
+                Rectangle {
+                    width: 60px;
+                    height: 34px;
+                    border-radius: 8px;
+                    background: go-touch.has-hover ? #4444cc : #3333aa;
+
+                    Text {
+                        text: "Go";
+                        color: #ffffff;
+                        font-size: 14px;
+                        font-weight: 600;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                    }
+
+                    go-touch := TouchArea {
+                        clicked => { root.navigate(url-field.text); }
+                    }
+                }
+            }
+        }
+
+        // ── Separator ─────────────────────────────────────────────
+        Rectangle {
+            height: 1px;
+            background: #2a2a3a;
+        }
+
+        // ── WebView area (Servo renders here) ────────────────────
+        webview-area := Rectangle {
+            vertical-stretch: 1;
+            background: #ffffff;
+
+            Image {
+                source: root.web-content;
+                width: 100%;
+                height: 100%;
+            }
+
+            touch-area := TouchArea {
+                pointer-event(event) => {
+                    WebviewEvents.webview-pointer-event(event, self.mouse-x, self.mouse-y);
+                }
+            }
+        }
+    }
+}
