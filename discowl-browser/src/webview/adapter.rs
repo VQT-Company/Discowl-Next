@@ -90,4 +90,19 @@ impl SlintServoAdapter {
         app.set_web_content(slint_image);
         app.window().request_redraw();
     }
+
+    pub fn resize_webview_if_needed(&self, app: &crate::DiscowlWindow) {
+        let scale = app.window().scale_factor();
+        let width = (app.get_webview_width() as f32 * scale) as u32;
+        let height = (app.get_webview_height() as f32 * scale) as u32;
+
+        let inner = self.inner.borrow();
+        if let Some(ref webview) = inner.webview {
+            use winit::dpi::PhysicalSize;
+            let current = webview.size();
+            if (current.width - width as f32).abs() > 0.5 || (current.height - height as f32).abs() > 0.5 {
+                webview.resize(PhysicalSize::new(width.max(1), height.max(1)));
+            }
+        }
+    }
 }

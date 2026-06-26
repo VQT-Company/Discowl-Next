@@ -57,6 +57,7 @@ pub fn create_webview(
     adapter.set_inner(servo, webview, rendering_adapter_rc.clone());
 
     let state_weak = Rc::downgrade(&adapter);
+    let app_weak = slint::ComponentHandle::as_weak(&app);
     slint::spawn_local(async move {
         loop {
             let state = match state_weak.upgrade() {
@@ -65,6 +66,9 @@ pub fn create_webview(
             };
             let _ = state.waker_receiver().recv().await;
             state.servo().spin_event_loop();
+            if let Some(app) = app_weak.upgrade() {
+                state.resize_webview_if_needed(&app);
+            }
         }
     })
     .expect("Failed to spawn servo event loop");
