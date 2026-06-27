@@ -9,55 +9,142 @@ export component DiscowlWindow inherits Window {
     title: "Discowl";
     min-width: 1024px;
     min-height: 768px;
-    background: #0f0f13;
+    background: #f5f5f7;
 
-    // Callbacks to communicate with Rust
+    in-out property <int> current-tab-index;
+    in property <[string]> tab-titles;
+
+    callback new-tab();
+    callback close-tab(int);
+    callback switch-tab(int);
     callback navigate(string);
     callback go-back();
     callback go-forward();
     callback reload();
 
-    // Properties updated from Rust
     in property <string> current-url: "https://google.com";
     in property <bool> can-go-back: false;
     in property <bool> can-go-forward: false;
     in property <bool> is-loading: false;
 
-    // Web content rendered by Servo
     in property <image> web-content;
     in property <length> webview-width <=> webview-area.width;
     in property <length> webview-height <=> webview-area.height;
 
     VerticalLayout {
-        // ── Toolbar ──────────────────────────────────────────────
+        spacing: 0;
+
+        // ── Tab bar ──
         Rectangle {
-            height: 52px;
-            background: #1a1a24;
+            height: 34px;
+            background: #ebebef;
 
             HorizontalLayout {
-                padding-left: 10px;
-                padding-right: 10px;
-                spacing: 6px;
-                alignment: center;
+                padding-left: 4px;
+                padding-right: 4px;
+                spacing: 2px;
+                alignment: start;
 
-                // Logo
-                Text {
-                    text: "🦉";
-                    font-size: 22px;
-                    vertical-alignment: center;
+                for tab-title[idx] in root.tab-titles : Rectangle {
+                    min-width: 80px;
+                    max-width: 240px;
+                    height: 100%;
+                    border-width: 1px;
+                    border-color: #e5e5ea;
+                    border-radius: 6px;
+                    background: idx == root.current-tab-index ? #f5f5f7 : #ffffff;
+
+                    HorizontalLayout {
+                        padding-left: 10px;
+                        padding-right: 4px;
+                        spacing: 6px;
+                        alignment: center;
+
+                        Text {
+                            text: tab-title;
+                            color: idx == root.current-tab-index ? #1c1c1e : #636366;
+                            font-size: 12px;
+                            horizontal-stretch: 1;
+                            overflow: elide;
+                            vertical-alignment: center;
+                        }
+
+                        Rectangle {
+                            width: 18px;
+                            height: 18px;
+                            border-radius: 9px;
+                            background: close-touch.has-hover ? #d9d9df : transparent;
+                            opacity: close-touch.has-hover ? 1 : 0;
+
+                            Text {
+                                text: "×";
+                                color: #636366;
+                                font-size: 13px;
+                                horizontal-alignment: center;
+                                vertical-alignment: center;
+                            }
+
+                            close-touch := TouchArea {
+                                clicked => { root.close-tab(idx); }
+                            }
+                        }
+                    }
+
+                    touch := TouchArea {
+                        clicked => { root.switch-tab(idx); }
+                    }
                 }
 
-                // Back button
+                // "+" new-tab button
                 Rectangle {
-                    width: 34px;
-                    height: 34px;
-                    border-radius: 8px;
-                    background: back-touch.has-hover ? #2a2a38 : transparent;
+                    width: 28px;
+                    height: 28px;
+                    border-radius: 4px;
+                    background: add-touch.has-hover ? #e5e5ea : transparent;
+
+                    Text {
+                        text: "+";
+                        color: #636366;
+                        font-size: 18px;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                    }
+
+                    add-touch := TouchArea {
+                        clicked => { root.new-tab(); }
+                    }
+                }
+
+                // Spacer
+                Rectangle {
+                    horizontal-stretch: 1;
+                    height: 100%;
+                }
+            }
+        }
+
+        // ── Toolbar ──
+        Rectangle {
+            height: 40px;
+            background: #ffffff;
+
+            HorizontalLayout {
+                padding-left: 8px;
+                padding-right: 8px;
+                spacing: 4px;
+                alignment: center;
+
+                // Back
+                Rectangle {
+                    width: 30px;
+                    height: 30px;
+                    border-radius: 4px;
+                    background: back-touch.has-hover ? #e5e5ea : transparent;
 
                     Text {
                         text: "←";
-                        color: root.can-go-back ? #ffffff : #555566;
-                        font-size: 18px;
+                        color: root.can-go-back ? #1c1c1e : #aeaeb2;
+                        font-size: 16px;
                         horizontal-alignment: center;
                         vertical-alignment: center;
                     }
@@ -67,17 +154,17 @@ export component DiscowlWindow inherits Window {
                     }
                 }
 
-                // Forward button
+                // Forward
                 Rectangle {
-                    width: 34px;
-                    height: 34px;
-                    border-radius: 8px;
-                    background: fwd-touch.has-hover ? #2a2a38 : transparent;
+                    width: 30px;
+                    height: 30px;
+                    border-radius: 4px;
+                    background: fwd-touch.has-hover ? #e5e5ea : transparent;
 
                     Text {
                         text: "→";
-                        color: root.can-go-forward ? #ffffff : #555566;
-                        font-size: 18px;
+                        color: root.can-go-forward ? #1c1c1e : #aeaeb2;
+                        font-size: 16px;
                         horizontal-alignment: center;
                         vertical-alignment: center;
                     }
@@ -87,17 +174,17 @@ export component DiscowlWindow inherits Window {
                     }
                 }
 
-                // Reload button
+                // Reload
                 Rectangle {
-                    width: 34px;
-                    height: 34px;
-                    border-radius: 8px;
-                    background: reload-touch.has-hover ? #2a2a38 : transparent;
+                    width: 30px;
+                    height: 30px;
+                    border-radius: 4px;
+                    background: reload-touch.has-hover ? #e5e5ea : transparent;
 
                     Text {
                         text: root.is-loading ? "✕" : "↻";
-                        color: #aaaacc;
-                        font-size: 18px;
+                        color: #636366;
+                        font-size: 16px;
                         horizontal-alignment: center;
                         vertical-alignment: center;
                     }
@@ -107,22 +194,36 @@ export component DiscowlWindow inherits Window {
                     }
                 }
 
-                // URL Bar
+                // URL bar
                 url-input := Rectangle {
                     horizontal-stretch: 1;
-                    height: 36px;
-                    border-radius: 10px;
-                    background: #25253a;
+                    height: 30px;
                     border-width: 1px;
-                    border-color: url-field.has-focus ? #5555ff : #33334a;
+                    border-color: url-field.has-focus ? #2563eb : #d1d1d6;
+                    border-radius: 8px;
+                    background: #ffffff;
 
                     HorizontalLayout {
-                        padding-left: 12px;
-                        padding-right: 12px;
+                        padding-left: 10px;
+                        padding-right: 4px;
+
+                        // Lock icon placeholder
+                        Rectangle {
+                            width: 20px;
+                            height: 20px;
+
+                            Text {
+                                text: "🔒";
+                                color: #16a34a;
+                                font-size: 11px;
+                                horizontal-alignment: center;
+                                vertical-alignment: center;
+                            }
+                        }
 
                         url-field := LineEdit {
                             text: root.current-url;
-                            font-size: 14px;
+                            font-size: 13px;
                             placeholder-text: "Search or enter address...";
 
                             accepted(text) => {
@@ -132,17 +233,17 @@ export component DiscowlWindow inherits Window {
                     }
                 }
 
-                // Go button
+                // Go
                 Rectangle {
-                    width: 60px;
-                    height: 34px;
-                    border-radius: 8px;
-                    background: go-touch.has-hover ? #4444cc : #3333aa;
+                    width: 48px;
+                    height: 30px;
+                    border-radius: 6px;
+                    background: go-touch.has-hover ? #3b82f6 : #2563eb;
 
                     Text {
                         text: "Go";
                         color: #ffffff;
-                        font-size: 14px;
+                        font-size: 13px;
                         font-weight: 600;
                         horizontal-alignment: center;
                         vertical-alignment: center;
@@ -155,13 +256,13 @@ export component DiscowlWindow inherits Window {
             }
         }
 
-        // ── Separator ─────────────────────────────────────────────
+        // ── Separator ──
         Rectangle {
             height: 1px;
-            background: #2a2a3a;
+            background: #d1d1d6;
         }
 
-        // ── WebView area (Servo renders here) ────────────────────
+        // ── Webview area ──
         webview-area := Rectangle {
             vertical-stretch: 1;
             background: #ffffff;

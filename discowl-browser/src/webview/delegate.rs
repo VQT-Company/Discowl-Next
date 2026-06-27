@@ -2,14 +2,11 @@ use std::cell::Cell;
 use std::rc::Rc;
 use std::time::{Duration, Instant};
 
-use slint::ComponentHandle;
-
 use servo::{WebView, WebViewDelegate};
 
 use super::SlintServoAdapter;
 
 pub struct AppDelegate {
-    app: slint::Weak<crate::DiscowlWindow>,
     adapter: Rc<SlintServoAdapter>,
     last_frame: Cell<Instant>,
     frame_interval: Duration,
@@ -17,12 +14,8 @@ pub struct AppDelegate {
 }
 
 impl AppDelegate {
-    pub fn new(
-        app: &crate::DiscowlWindow,
-        adapter: Rc<SlintServoAdapter>,
-    ) -> Self {
+    pub fn new(adapter: Rc<SlintServoAdapter>) -> Self {
         Self {
-            app: app.as_weak(),
             adapter,
             last_frame: Cell::new(Instant::now()),
             frame_interval: Duration::from_millis(200),
@@ -40,16 +33,14 @@ impl WebViewDelegate for AppDelegate {
         self.last_frame.set(now);
 
         webview.paint();
-        if let Some(app) = self.app.upgrade() {
-            self.adapter.update_web_content_with_latest_frame(&app);
+        if self.adapter.is_active() {
+            self.adapter.update_web_content_with_latest_frame();
             self.has_frame.set(true);
         }
         self.adapter.present();
     }
 
     fn notify_url_changed(&self, _webview: WebView, url: url::Url) {
-        if let Some(app) = self.app.upgrade() {
-            app.set_current_url(url.to_string().into());
-        }
+        self.adapter.set_current_url(url.to_string().into());
     }
 }
