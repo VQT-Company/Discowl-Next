@@ -11,6 +11,8 @@ fn main() {
     setup_slint_renderer();
 
     let app = DiscowlWindow::new().unwrap();
+    // Hint: request maximized before the window exists.  The call inside the
+    // rendering notifier (below) is the reliable one — this is just a backup.
     app.window().set_maximized(true);
 
     let adapter = Rc::new(std::cell::RefCell::new(None::<Rc<webview::SlintServoAdapter>>));
