@@ -11,6 +11,7 @@ fn main() {
     setup_slint_renderer();
 
     let app = DiscowlWindow::new().unwrap();
+    app.window().set_maximized(true);
 
     let adapter = Rc::new(std::cell::RefCell::new(None::<Rc<webview::SlintServoAdapter>>));
     let adapter_weak = Rc::downgrade(&adapter);
@@ -25,6 +26,13 @@ fn main() {
             }
             if !matches!(state, slint::RenderingState::RenderingSetup) {
                 return;
+            }
+
+            // Maximise the window *after* the winit window exists.  Calling
+            // set_maximized(true) before run() stores the request but the
+            // underlying OS window may not exist yet, so the hint can be lost.
+            if let Some(app) = app_weak.upgrade() {
+                app.window().set_maximized(true);
             }
 
             let slint::GraphicsAPI::WGPU29 { device, queue, .. } = graphics_api else {
