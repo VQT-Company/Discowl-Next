@@ -64,11 +64,11 @@ pub fn create_webview(
     slint::spawn_local(async move {
         use std::time::{Duration, Instant};
 
-        // Throttle event-loop spinning to save CPU when the page is idle.
-        // At 50 ms we spin at most 20 Hz — Servo's internal refresh driver
-        // runs at 120 Hz, but we batch those wakeups and only process one
-        // batch per interval.
-        let spin_interval = Duration::from_millis(50);
+        // Throttle event-loop spinning to avoid wasted CPU.
+        // The AppDelegate caps frame display at 200 ms (5 FPS), so there is
+        // no benefit in spinning Servo's event loop faster than ~6 Hz.
+        // Spinning slower also keeps input latency acceptable (~150 ms).
+        let spin_interval = Duration::from_millis(150);
         let mut last_spin = Instant::now();
 
         loop {

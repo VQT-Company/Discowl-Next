@@ -1,2 +1,7 @@
 [target.x86_64-pc-windows-msvc]
 linker = "lld-link.exe"
+
+# Optimise dependencies even in debug builds — the pixel Y-flip loop and
+# clone_from_slice are especially costly without LLVM optimisation.
+[profile.dev.package."*"]
+opt-level = 2
