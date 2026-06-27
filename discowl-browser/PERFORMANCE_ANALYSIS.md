@@ -129,8 +129,34 @@ CPU, consuming ~25% CPU constantly.
 
 **Fix**:
 - Drain all pending waker signals into a single batch (no more back-to-back spins)
-- Throttle `spin_event_loop()` calls to **once per 50 ms** (20 Hz max)
-- Total CPU savings: significant — event-loop spinning drops from 60 Hz → 20 Hz max
+- Throttle `spin_event_loop()` calls to **once per 150 ms** (~6 Hz), matching the 200 ms frame cap
+  in the `AppDelegate`
+- Total CPU savings: significant — event-loop spinning drops from 120 Hz → ~6 Hz max
+
+### 2. Debug profile optimisation (`.cargo/config.toml`)
+
+**Problem**: In debug builds (`cargo run`), all dependency crates compile without optimisation,
+making the pixel Y-flip loop and `clone_from_slice` paths unnecessarily slow.
+
+**Fix**:
+- Added `[profile.dev.package."*"] opt-level = 2` to `.cargo/config.toml` — all dependencies
+  get level‑2 optimisation even in debug builds.
+- Note: this applies only to dependencies (`package."*"`), not the local crate, so debug
+  assertions and symbols in discowl-browser itself are preserved.
+
+### 3. Dirty-frame heuristics (removed)
+
+**Attempted**: Comparing a `frame_version()` counter to skip `glReadPixels` and Slint upload
+when the frame hadn't changed.
+
+**Problem**: The version counter was only incremented inside `current_framebuffer_as_image()`,
+but the check ran *before* calling it. The first frame was always skipped (version 0 == 0),
+and subsequent frames also matched (counter never advanced), so **no content was displayed**.
+
+**Reverted**: The primary CPU savings come from the 150 ms event-loop throttle, the 200 ms
+frame cap in `AppDelegate`, and the debug profile override. A real dirty-frame check
+would require either a Servo API to signal content changes or pixel-level diffing
+(both more expensive than the readback itself).
 
 ### 2. GPU adapter diagnostic logging
 

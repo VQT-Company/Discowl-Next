@@ -1,4 +1,4 @@
-use std::cell::{Cell, RefCell};
+use std::cell::RefCell;
 use std::rc::Rc;
 
 use euclid::default::Size2D;
@@ -14,10 +14,6 @@ use surfman::chains::{PreserveBuffer, SwapChain};
 
 pub trait ServoRenderingAdapter {
     fn current_framebuffer_as_image(&self) -> Image;
-    /// Monotonically increasing version bumped each time a new, unique frame
-    /// was actually read back.  Callers can compare successive values to
-    /// detect whether the frame content changed since last call.
-    fn frame_version(&self) -> u64;
     fn present(&self);
     fn get_rendering_context(&self) -> Rc<dyn RenderingContext>;
 }
@@ -31,13 +27,11 @@ pub fn create_software_context(
     );
     Box::new(SoftwareAdapter {
         rendering_context,
-        frame_version: Cell::new(0),
     })
 }
 
 struct SoftwareAdapter {
     rendering_context: Rc<SoftwareRenderingContext>,
-    frame_version: Cell<u64>,
 }
 
 impl ServoRenderingAdapter for SoftwareAdapter {
@@ -56,13 +50,7 @@ impl ServoRenderingAdapter for SoftwareAdapter {
         let shared_pixel_buffer =
             SharedPixelBuffer::clone_from_slice(&pixel_slice, width, height);
 
-        self.frame_version.set(self.frame_version.get() + 1);
-
         Image::from_rgba8(shared_pixel_buffer)
-    }
-
-    fn frame_version(&self) -> u64 {
-        self.frame_version.get()
     }
 
     fn present(&self) {}
@@ -112,7 +100,6 @@ pub fn create_gpu_adapter(
             swap_chain,
             size: RefCell::new(physical_size),
         }),
-        frame_version: Cell::new(0),
     }))
 }
 
@@ -196,7 +183,6 @@ impl RenderingContext for GpuRenderingContext {
 
 struct GpuAdapter {
     rendering_context: Rc<GpuRenderingContext>,
-    frame_version: Cell<u64>,
 }
 
 impl GpuRenderingContext {
@@ -241,7 +227,6 @@ impl ServoRenderingAdapter for GpuAdapter {
                 let pixel_slice = image_buffer.into_raw();
                 let shared_pixel_buffer =
                     SharedPixelBuffer::clone_from_slice(&pixel_slice, width, height);
-                self.frame_version.set(self.frame_version.get() + 1);
                 Image::from_rgba8(shared_pixel_buffer)
             }
             None => {
@@ -249,10 +234,6 @@ impl ServoRenderingAdapter for GpuAdapter {
                 Image::default()
             }
         }
-    }
-
-    fn frame_version(&self) -> u64 {
-        self.frame_version.get()
     }
 
     fn present(&self) {

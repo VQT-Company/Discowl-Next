@@ -1,4 +1,4 @@
-use std::cell::{Cell, Ref, RefCell};
+use std::cell::{Ref, RefCell};
 use std::rc::Rc;
 
 use slint::ComponentHandle;
@@ -12,7 +12,6 @@ pub struct SlintServoAdapter {
     waker_sender: Sender<()>,
     waker_receiver: Receiver<()>,
     inner: RefCell<SlintServoAdapterInner>,
-    last_frame_version: Cell<u64>,
 }
 
 struct SlintServoAdapterInner {
@@ -34,7 +33,6 @@ impl SlintServoAdapter {
         Self {
             waker_sender: sender,
             waker_receiver: receiver,
-            last_frame_version: Cell::new(0),
             inner: RefCell::new(SlintServoAdapterInner {
                 servo: None,
                 webview: None,
@@ -93,13 +91,6 @@ impl SlintServoAdapter {
             .rendering_adapter
             .as_ref()
             .expect("Rendering adapter not initialized");
-
-        let version = rendering_adapter.frame_version();
-        let last = self.last_frame_version.get();
-        if version == last {
-            return;
-        }
-        self.last_frame_version.set(version);
 
         let slint_image = rendering_adapter.current_framebuffer_as_image();
         app.set_web_content(slint_image);
