@@ -11,7 +11,6 @@ fn main() {
     setup_slint_renderer();
 
     let app = DiscowlWindow::new().unwrap();
-    app.window().set_maximized(true);
 
     let adapter = Rc::new(std::cell::RefCell::new(None::<Rc<webview::SlintServoAdapter>>));
     let adapter_weak = Rc::downgrade(&adapter);
