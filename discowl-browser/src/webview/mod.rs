@@ -18,22 +18,25 @@ pub fn create_webview(
     queue: slint::wgpu_29::wgpu::Queue,
 ) -> std::rc::Rc<SlintServoAdapter> {
     use std::rc::Rc;
-    use smol::channel;
     use url::Url;
     use euclid::Scale;
     use winit::dpi::PhysicalSize;
     use servo::{ServoBuilder, WebViewBuilder};
 
-    let (sender, receiver) = channel::unbounded::<()>();
-    let adapter = Rc::new(SlintServoAdapter::new(sender, receiver, device, queue));
+    let adapter = Rc::new(SlintServoAdapter::new(device.clone(), queue.clone()));
 
     let scale_factor = app.window().scale_factor();
     let width = (app.get_webview_width() as f32 * scale_factor) as u32;
     let height = (app.get_webview_height() as f32 * scale_factor) as u32;
     let physical_size = PhysicalSize::new(width.max(1), height.max(1));
 
-    let rendering_adapter =
-        rendering_context::create_software_context(physical_size);
+    let rendering_adapter = rendering_context::create_gpu_adapter(physical_size, device, queue)
+        .unwrap_or_else(|e| {
+            eprintln!("[webview] *** GPU adapter failed: {e}");
+            eprintln!("[webview] *** Falling back to software rendering (slower, more CPU usage)");
+            eprintln!("[webview] *** Build with --release and check the grafting crate for GPU support");
+            rendering_context::create_software_context(physical_size)
+        });
     let rendering_adapter_rc = Rc::new(rendering_adapter);
 
     let waker = Waker::new(adapter.waker_sender());
@@ -59,15 +62,35 @@ pub fn create_webview(
     let state_weak = Rc::downgrade(&adapter);
     let app_weak = slint::ComponentHandle::as_weak(&app);
     slint::spawn_local(async move {
+        use std::time::{Duration, Instant};
+
+        // Throttle event-loop spinning to save CPU when the page is idle.
+        // At 50 ms we spin at most 20 Hz — Servo's internal refresh driver
+        // runs at 120 Hz, but we batch those wakeups and only process one
+        // batch per interval.
+        let spin_interval = Duration::from_millis(50);
+        let mut last_spin = Instant::now();
+
         loop {
             let state = match state_weak.upgrade() {
                 Some(s) => s,
                 None => break,
             };
+
+            // Block until the first waker signal arrives.
             let _ = state.waker_receiver().recv().await;
-            state.servo().spin_event_loop();
-            if let Some(app) = app_weak.upgrade() {
-                state.resize_webview_if_needed(&app);
+
+            // Drain any additional pending wakeups that arrived during the
+            // previous spin — batch them into a single event-loop tick.
+            while state.waker_receiver().try_recv().is_ok() {}
+
+            // Only spin the Servo event loop once per interval.
+            if last_spin.elapsed() >= spin_interval {
+                last_spin = Instant::now();
+                state.servo().spin_event_loop();
+                if let Some(app) = app_weak.upgrade() {
+                    state.resize_webview_if_needed(&app);
+                }
             }
         }
     })

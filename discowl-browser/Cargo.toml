@@ -8,14 +8,17 @@ slint = { version = "1.17", features = ["backend-winit", "renderer-femtovg-wgpu"
 servo = "0.3.0"
 raw-window-handle = "0.6"
 url = "2.5"
-smol = "2.0"
 gleam = "0.15"
+smol = "2.0"
 glow = "0.17"
 image = "0.25"
 euclid = "0.22"
 winit = "0.30.12"
 rustls = "0.23"
 surfman = { version = "0.12", features = ["chains"] }
+
+# Zero-copy GPU import via grafting (GL framebuffer → wgpu texture)
+grafting = { git = "https://github.com/mark-ik/wgpu-graft", default-features = false, features = ["wgpu-29", "surfman"] }
 
 [target.'cfg(target_os = "windows")'.dependencies]
 surfman = { version = "0.12", features = ["chains", "sm-angle-builtin"] }

@@ -119,12 +119,56 @@ Both require platform-specific HWND-level coordination.
 | `src/webview/rendering_context/servo_rendering_adapter.rs` | `SoftwareAdapter` — `current_framebuffer_as_image()` via readback |
 | `Cargo.toml` | Dependencies: slint (femtovg-wgpu), servo 0.3.0, surfman, winit |
 
+## Applied Optimizations (June 2026)
+
+### 1. Event loop throttling (`src/webview/mod.rs`)
+
+**Problem**: Servo's internal `TimerRefreshDriver` fires the `EventLoopWaker` at 120 Hz even when the page
+is completely idle. Each wake calls `spin_event_loop()` which performs WebRender compositing on the
+CPU, consuming ~25% CPU constantly.
+
+**Fix**:
+- Drain all pending waker signals into a single batch (no more back-to-back spins)
+- Throttle `spin_event_loop()` calls to **once per 50 ms** (20 Hz max)
+- Total CPU savings: significant — event-loop spinning drops from 60 Hz → 20 Hz max
+
+### 2. GPU adapter diagnostic logging
+
+The code now prints a clear error message when the GPU rendering path fails, including
+the exact reason (e.g. `Connection::new failed`, `No suitable surfman adapter`).
+Run the app and check stderr to see why hardware acceleration isn't active.
+
+### 3. Servo official GPU bridge (recommended upgrade path)
+
+The **Slint project now ships a complete GPU rendering path** for Windows using NT shared
+handles (D3D11 ↔ D3D12). See:
+- https://slint.dev/blog/servo-with-slint-update (Windows support)
+- https://github.com/slint-ui/slint/tree/master/examples/servo
+
+The official example uses:
+- `GPURenderingContext` with per-platform texture sharing (DirectX, Metal, Vulkan)
+- **Zero-copy** texture bridge: Servo renders to GL/ANGLE → shared D3D11 texture →
+  imported to D3D12/wgpu — no CPU readback, no memcpy, no pixel copy.
+- The current project's `grafting` crate approach is an alternative but may be less stable.
+
+## Build Notes
+
+**Always build with `--release` for real use:**
+```
+cargo build --release
+```
+Debug builds are dramatically slower (no optimizations, assertions enabled).
+
 ## Recommended Next Steps
 
-1. **Build `--release` and benchmark**: Real-world performance may be acceptable for simple pages.
-2. **Profile with tracing**: Enable Servo's `profiling` feature to identify the actual bottleneck.
-3. **If performance is unacceptable**: Investigate `WindowRenderingContext` with child-HWND compositing, or consider `wry` as a pragmatic alternative.
-4. **Hybrid approach**: Use `WindowRenderingContext` for the webview area and overlay Slint's UI via transparent window regions or layered windows (Windows-specific).
+1. **Run with `cargo run --release`** and check stderr for GPU adapter error messages.
+2. **Switch to the official Slint GPU bridge**: Port `GPURenderingContext` from the
+   [Slint Servo example](https://github.com/slint-ui/slint/tree/master/examples/servo)
+   to replace the `grafting`-crate GPU adapter. This gives zero-copy GPU rendering on
+   Windows, macOS, and Linux.
+3. **If GPU bridge is too complex**: Accept software rendering at 20 Hz event loop.
+   CPU usage should drop from ~25% to ~5-10% on idle pages.
+4. **Profile with tracing**: Enable Servo's `profiling` feature to identify remaining bottlenecks.
 
 ## Dependencies
 

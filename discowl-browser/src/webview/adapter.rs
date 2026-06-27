@@ -26,14 +26,13 @@ struct SlintServoAdapterInner {
 
 impl SlintServoAdapter {
     pub fn new(
-        waker_sender: Sender<()>,
-        waker_receiver: Receiver<()>,
         device: slint::wgpu_29::wgpu::Device,
         queue: slint::wgpu_29::wgpu::Queue,
     ) -> Self {
+        let (sender, receiver) = smol::channel::unbounded();
         Self {
-            waker_sender,
-            waker_receiver,
+            waker_sender: sender,
+            waker_receiver: receiver,
             inner: RefCell::new(SlintServoAdapterInner {
                 servo: None,
                 webview: None,
@@ -77,6 +76,13 @@ impl SlintServoAdapter {
         inner.servo = Some(servo);
         inner.webview = Some(webview);
         inner.rendering_adapter = Some(rendering_adapter);
+    }
+
+    pub fn present(&self) {
+        let inner = self.inner.borrow();
+        if let Some(rendering_adapter) = &inner.rendering_adapter {
+            rendering_adapter.present();
+        }
     }
 
     pub fn update_web_content_with_latest_frame(&self, app: &crate::DiscowlWindow) {
